@@ -90,10 +90,10 @@ results_df %>%
 
 ```{r}
 
-file_name = list.files(path = '.lda_data')
+file_name = list.files(path = "./lda_data", full.names = TRUE)
 
 study_df = 
-  file_names %>% 
+  file_name %>% 
   set_names() %>% 
   map_dfr(read_csv, .id = "file")
 
@@ -130,11 +130,6 @@ Overtime, the observations in the control arm have parily constant values while 
 
 ##probelm 3
 
-We will export the results of the t-test of whater or not the mean is euqal to zero. When the mean is equal 0 we will fail to reject 5% of the time, when we get a mean of 5 we will reject more times. 
-
-making two plots
-what the estimated mean is when the mean equal to 0. Filter when the estimate p-values is 0.5 and simulate what it would look like with whether it was significant or not. 
-
 
 
 ```{r}
@@ -169,6 +164,9 @@ rerun(10, sim_t.test(mu = 0)) %>%
 ```
 
 
+Running simulations and putting into dataframe
+
+
 ```{r}
 mu_list = 
   list(
@@ -187,11 +185,68 @@ output = vector("list", length = 7)
 
 for(i in 1:7) {
   output[[i]] = 
-    rerun(5000, sim_mean_sd(mu = mu_list[[i]])) %>% 
-    bind_rows()
+    rerun(1000, sim_t.test(mu = mu_list[[i]]))
+    
+sim_results = bind_rows(output)
 }
 ```
 
+Graphing the results
+
+```{r}
+sim_results_df = 
+  tibble(
+    mu = c(0,1,2,3,4,5,6)
+  ) %>% 
+  mutate(
+    output_lists = map(.x = mu, ~ rerun(100, sim_t.test(mu = .x))),
+    estimate_df = map(output_lists, bind_rows)
+  ) %>% 
+    select(-output_lists) %>% 
+    unnest(estimate_df)
+```
+
+```{r}
+
+sim_results_df %>%
+mutate(reject = ifelse(p.value < '0.05', 1, 0)) %>%
+
+group_by(mu) %>%
+summarize(prop_reject = mean(reject)) %>%
+ggplot(aes(x = mu, y = prop_reject)) +
+geom_point() +
+labs(
+title = "Proportion of times the null is rejected",
+x = "True Value of Mu",
+y = "Power")
+```
 
 
+```{r}
+sim_results_rej = 
+sim_results_df %>%
+mutate(reject = ifelse(p.value < '0.05', 1, 0)) %>%
+filter(reject == 1) %>% 
+group_by(mu) %>%
+summarize(mean_mu = mean(estimate)) %>%
+  mutate(decision = "rejected")
+  
+
+sim_results_all = 
+  sim_results_df %>% 
+  mutate(reject = ifelse(p.value < '0.05', 1, 0)) %>% 
+  group_by(mu) %>% 
+  summarize(mean_mu = mean(estimate)) %>% 
+  mutate(decision = "all")
+
+
+ggplot(data = sim_results_all, aes(x = mu, y = mean_mu, color = decision)) + 
+  geom_point() + 
+  geom_point(data = sim_results_rej) +
+  labs(
+    title = "True mu vs. Estimated mu",
+    x = "True Value of mu",
+    y = "Mean Estimated Value of mu")
+
+```
 
