@@ -152,11 +152,20 @@ sim_t.test = function(n = 30, mu, sigma = 5) {
       sd = sd(x)
     )
   
+  sim_data %>% 
+    t.test() %>% 
+    broom::tidy()
+  
 }
 ```
 
+Testing the fucntion
+
+
 ```{r}
-sim_mean_sd(mu = 0)
+test_results = 
+rerun(10, sim_t.test(mu = 0)) %>% 
+  bind_rows()
 ```
 
 
@@ -179,24 +188,10 @@ output = vector("list", length = 7)
 for(i in 1:7) {
   output[[i]] = 
     rerun(5000, sim_mean_sd(mu = mu_list[[i]])) %>% 
-    broom::tidy()
+    bind_rows()
 }
 ```
 
 
-```{r}
-sim_results_df = 
-  tibble(
-    mu = c(0,1,2,3,4,5,6)
-  ) %>% 
-  mutate(
-    output_lists = map(.x = mu, ~ rerun(100, sim_mean_sd(mu = .x))),
-    estimate_df = map(output_lists, bind_rows),
-    prop_tests = map2(.x = mu, .y = mean, ~t.test(y = .y, mu = .x)),
-    tidy_tests = map(.x = prop_tests, ~broom::tidy(.x))
-  ) %>% 
-    select(-output_lists) %>% 
-    unnest(estimate_df)
-```
 
 
