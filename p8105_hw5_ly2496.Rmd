@@ -26,7 +26,7 @@ Problem 1
 
 ```{r}
 homicide_df = 
-  read_csv("data/homicide-data.csv") %>% 
+  read_csv("homicide_data/homicide-data.csv") %>% 
   mutate(
     city_state = str_c(city, state, sep = "_"),
     resolved = case_when(
@@ -83,6 +83,111 @@ results_df %>%
   geom_point() +
   geom_errorbar(aes(ymin = conf.low, ymax = conf.high))+
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+```
+
+##problem 2 ideas
+
+import one dataset/this is a data organization and a data tidying problem. Everything should be in one tibble
+
+
+```{r}
+
+file_name = list.files(path = '.lda_data')
+
+study_df = 
+  file_names %>% 
+  set_names() %>% 
+  map_dfr(read_csv, .id = "file")
+
+study_tidy_df =
+  study_df %>% 
+  mutate(
+  file = str_replace_all(file, "./lda_data/", ""),
+  file = str_replace_all(file, ".csv", "")
+  ) %>% 
+  separate(file, into = c("group", "id"), sep = "_") %>% 
+  pivot_longer(
+    week_1:week_8,
+    names_to = "week",
+    names_prefix = "week_", 
+    values_to = "obs"
+  ) %>% 
+  mutate(
+    obs = as.numeric(obs)
+  )
+             
+        
+  
+```
+
+##probelm 3
+
+We will export the results of the t-test of whater or not the mean is euqal to zero. When the mean is equal 0 we will fail to reject 5% of the time, when we get a mean of 5 we will reject more times. 
+
+making two plots
+what the estimated mean is when the mean equal to 0. Filter when the estimate p-values is 0.5 and simulate what it would look like with whether it was significant or not. 
+
+
+
+```{r}
+sim_mean_sd = function(n = 30, mu, sigma = 5) {
+  
+  sim_data = 
+    tibble(
+      x=rnorm(n = n, mean = mu, sd = sigma)
+    )
+  
+  sim_data %>% 
+    summarize (
+      mean = mean(x),
+      sd = sd(x)
+    )
+  
+}
+```
+
+```{r}
+sim_mean_sd(mu = 0)
+```
+
+
+```{r}
+mu_list = 
+  list(
+    "mu = 0" = 0,
+    "mu = 1" = 1,
+    "mu = 2" = 2,
+    "mu = 3" = 3,
+    "mu = 4" = 4,
+    "mu = 5" = 5,
+    "mu = 6" = 6
+    
+  )
+
+output = vector("list", length = 7)
+
+
+for(i in 1:7) {
+  output[[i]] = 
+    rerun(5000, sim_mean_sd(mu = mu_list[[i]])) %>% 
+    broom::tidy()
+}
+```
+
+
+```{r}
+sim_results_df = 
+  tibble(
+    mu = c(0,1,2,3,4,5,6)
+  ) %>% 
+  mutate(
+    output_lists = map(.x = mu, ~ rerun(100, sim_mean_sd(mu = .x))),
+    estimate_df = map(output_lists, bind_rows),
+    prop_tests = map2(.x = mu, .y = mean, ~t.test(y = .y, mu = .x)),
+    tidy_tests = map(.x = prop_tests, ~broom::tidy(.x))
+  ) %>% 
+    select(-output_lists) %>% 
+    unnest(estimate_df)
 ```
 
 
