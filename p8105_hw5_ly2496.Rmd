@@ -24,6 +24,9 @@ scale_fill_discrete = scale_fill_viridis_d
 ```
 Problem 1
 
+Raw Data: Dataset is from The Washington Post who gathered data on homicides in 50 large U.S. cities and made the data available through  GitHub repository. The dataset contains variables such as latitude, longitude, state, city, victim_sex, victim_age, victim_race, first name, last name report number, and dispostion. The dataset contains 52178 observations. 
+
+
 ```{r}
 homicide_df = 
   read_csv("homicide_data/homicide-data.csv") %>% 
@@ -50,7 +53,7 @@ aggregate_df =
   )
 ```
 
-Can i do a prop tests for a single city?
+Prop test for a single city (Baltimore_MD)
 
 ```{r}
 prop.test(
@@ -59,7 +62,7 @@ prop.test(
   broom::tidy()
 ```
 
-Try to iterate........
+Iterating into a dataframe
 
 ```{r}
 results_df=
@@ -82,6 +85,9 @@ results_df %>%
   ggplot(aes(x = city_state, y = estimate))+
   geom_point() +
   geom_errorbar(aes(ymin = conf.low, ymax = conf.high))+
+  labs(
+    title = "Proportion of unsolved Homicides by City"
+  )+
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
 ```
 
@@ -207,37 +213,37 @@ sim_results_df =
 ```
 
 ```{r}
-
 sim_results_df %>%
-mutate(reject = ifelse(p.value < '0.05', 1, 0)) %>%
-
+mutate(reject = ifelse(p.value < 0.05, 1, 0)) %>%
+filter(reject == 1) %>% 
 group_by(mu) %>%
-summarize(prop_reject = mean(reject)) %>%
+summarize(prop_reject = n()/5000) %>% 
 ggplot(aes(x = mu, y = prop_reject)) +
 geom_point() +
 labs(
 title = "Proportion of times the null is rejected",
 x = "True Value of Mu",
 y = "Power")
-```
 
+```
+As the true value of my increases, so does power (proportion of times the null is rejected). The power maximizes around when the true mean is between 3 and 4, where the curve flattens out at 1 after 4. 
 
 ```{r}
 sim_results_rej = 
-sim_results_df %>%
-mutate(reject = ifelse(p.value < '0.05', 1, 0)) %>%
-filter(reject == 1) %>% 
-group_by(mu) %>%
-summarize(mean_mu = mean(estimate)) %>%
-  mutate(decision = "rejected")
+  sim_results_df %>%
+    mutate(reject = ifelse(p.value < '0.05', 1, 0)) %>%
+    filter(reject == 1) %>% 
+    group_by(mu) %>%
+    summarize(mean_mu = mean(estimate)) %>%
+    mutate(decision = "rejected")
   
 
 sim_results_all = 
   sim_results_df %>% 
-  mutate(reject = ifelse(p.value < '0.05', 1, 0)) %>% 
-  group_by(mu) %>% 
-  summarize(mean_mu = mean(estimate)) %>% 
-  mutate(decision = "all")
+    mutate(reject = ifelse(p.value < '0.05', 1, 0)) %>% 
+    group_by(mu) %>% 
+    summarize(mean_mu = mean(estimate)) %>% 
+    mutate(decision = "all")
 
 
 ggplot(data = sim_results_all, aes(x = mu, y = mean_mu, color = decision)) + 
@@ -249,4 +255,4 @@ ggplot(data = sim_results_all, aes(x = mu, y = mean_mu, color = decision)) +
     y = "Mean Estimated Value of mu")
 
 ```
-
+We see that as the true value of mu increases after 3, the mean estimated value of mu for when the null was rejected diverges further (is smaller) from the true value of mu. 
