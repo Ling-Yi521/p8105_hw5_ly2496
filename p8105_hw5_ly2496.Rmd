@@ -85,9 +85,7 @@ results_df %>%
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
 ```
 
-##problem 2 ideas
-
-import one dataset/this is a data organization and a data tidying problem. Everything should be in one tibble
+##problem 2
 
 
 ```{r}
@@ -105,7 +103,7 @@ study_tidy_df =
   file = str_replace_all(file, "./lda_data/", ""),
   file = str_replace_all(file, ".csv", "")
   ) %>% 
-  separate(file, into = c("group", "id"), sep = "_") %>% 
+  separate(file, into = c("group", "id"), sep = "_", remove = FALSE) %>% 
   pivot_longer(
     week_1:week_8,
     names_to = "week",
@@ -115,10 +113,20 @@ study_tidy_df =
   mutate(
     obs = as.numeric(obs)
   )
-             
+
+study_tidy_df %>% 
+ggplot(aes(x = week, y = obs, group = file)) + 
+  geom_line(aes(color = group)) +
+  labs(
+    title = "Observations over time for Each Subject",
+    x = "Week",
+    y = "Observation"
+  )           
         
   
 ```
+Overtime, the observations in the control arm have parily constant values while the observations in the exerimental arm seems to be increasing over time. 
+
 
 ##probelm 3
 
@@ -130,7 +138,8 @@ what the estimated mean is when the mean equal to 0. Filter when the estimate p-
 
 
 ```{r}
-sim_mean_sd = function(n = 30, mu, sigma = 5) {
+
+sim_t.test = function(n = 30, mu, sigma = 5) {
   
   sim_data = 
     tibble(
